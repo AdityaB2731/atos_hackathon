@@ -308,17 +308,25 @@ def process_uploaded_file(uploaded_file):
 
 def vector_embedding(documents):
     with st.spinner("Processing documents..."):
-        st.session_state.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        st.session_state.text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
         st.session_state.final_documents = st.session_state.text_splitter.split_documents(documents)
         # Store documents in session state for simple text search
         st.session_state.documents_text = [doc.page_content for doc in st.session_state.final_documents]
         st.session_state.documents_metadata = [doc.metadata for doc in st.session_state.final_documents]
     st.success("Documents processed successfully!")
 
+def estimate_tokens(text):
+    """Rough estimate of token count (1 token ≈ 4 characters)"""
+    return len(text) // 4
+
 def simple_text_search(query, documents_text, top_k=5):
     """Simple text-based search using keyword matching"""
     query_lower = query.lower()
     results = []
+    
+    # If no query or empty documents, return all documents
+    if not query or not documents_text:
+        return documents_text[:top_k]
     
     for i, doc_text in enumerate(documents_text):
         doc_lower = doc_text.lower()
@@ -329,6 +337,11 @@ def simple_text_search(query, documents_text, top_k=5):
     
     # Sort by score and return top_k results
     results.sort(key=lambda x: x[0], reverse=True)
+    
+    # If no matches found, return first few documents
+    if not results:
+        return documents_text[:top_k]
+    
     return [doc_text for score, doc_text, idx in results[:top_k]]
 
 def convert_to_json(extraction_text):
@@ -420,13 +433,58 @@ if st.session_state.documents_text:
     if st.session_state.selected_option == 'extraction':
         if "extraction_result" not in st.session_state:
             with st.spinner("Extracting key details..."):
-                # Use simple text search to get relevant documents
-                relevant_docs = simple_text_search("legal contract terms conditions", st.session_state.documents_text)
+                # Use all documents for extraction instead of just searching
+                all_docs = st.session_state.documents_text
                 
-                # Create documents for the chain
-                documents = [Document(page_content=doc) for doc in relevant_docs]
+                # Debug: Show how many documents we have
+                st.info(f"Processing {len(all_docs)} document chunks for extraction...")
                 
-                document_chain = create_stuff_documents_chain(llm, extraction_prompt)
+                # Limit the number of documents to avoid token limit issues
+                # Start with a conservative number and adjust based on token count
+                max_chunks = min(2, len(all_docs))
+                selected_docs = all_docs[:max_chunks]
+                
+                # Estimate tokens for the selected documents
+                total_text = " ".join(selected_docs)
+                estimated_tokens = estimate_tokens(total_text)
+                
+                st.info(f"Using first {max_chunks} chunks (estimated {estimated_tokens} tokens) to stay within API limits...")
+                
+                # If still too large, reduce further
+                if estimated_tokens > 4000:  # Leave room for prompt and response
+                    max_chunks = 1
+                    selected_docs = all_docs[:max_chunks]
+                    total_text = " ".join(selected_docs)
+                    estimated_tokens = estimate_tokens(total_text)
+                    st.warning(f"Reduced to {max_chunks} chunk (estimated {estimated_tokens} tokens) to avoid token limit...")
+                
+                # Create documents for the chain - use limited documents
+                documents = [Document(page_content=doc) for doc in selected_docs]
+                
+                # Create a more direct prompt for extraction
+                direct_extraction_prompt = ChatPromptTemplate.from_template("""
+                You are an expert legal document analyst. Analyze the following document sections and extract key legal information.
+
+                Document Content:
+                {context}
+
+                Please extract and categorize the following information:
+
+                1. **Entities & Contact Details**: Parties involved, names, addresses, contact information
+                2. **Contract Timeline**: Start date, end date, key dates
+                3. **Scope of Agreement**: Purpose, obligations, deliverables
+                4. **Service Level Agreement (SLA)**: Performance metrics, response times
+                5. **Penalty Clauses**: Conditions, consequences for non-compliance
+                6. **Confidentiality**: Obligations, duration, scope
+                7. **Renewal & Termination**: Conditions, notice periods
+                8. **Commercial Terms**: Payment terms, pricing, invoicing
+                9. **Risks & Assumptions**: Potential risks, mitigation strategies
+
+                If any information is not found, state "N/A" for that section.
+                Provide a structured analysis of the document sections provided.
+                """)
+                
+                document_chain = create_stuff_documents_chain(llm, direct_extraction_prompt)
                 
                 start = time.process_time()
                 response = document_chain.invoke({'context': documents, 'input': 'Extract all key legal information from the document'})
@@ -453,6 +511,16 @@ if st.session_state.documents_text:
         extraction_result = st.session_state.extraction_result
 
         st.success(f"Analysis completed in {extraction_result['elapsed']:.2f} seconds!")
+        
+        # Add a note about the limitation
+        st.info("💡 **Note**: Due to API token limits, this analysis is based on the first few document chunks. For comprehensive analysis, use the 'Chat with Docs' feature to ask specific questions about different parts of your document.")
+        
+        # Add a button to re-run extraction
+        if st.button("🔄 Re-run Extraction"):
+            if "extraction_result" in st.session_state:
+                del st.session_state.extraction_result
+            st.experimental_rerun()
+        
         st.subheader("📑 Legal Document Insights")
         st.write(extraction_result['answer'])
 
