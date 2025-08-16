@@ -315,6 +315,22 @@ def vector_embedding(documents):
         st.session_state.documents_metadata = [doc.metadata for doc in st.session_state.final_documents]
     st.success("Documents processed successfully!")
 
+def simple_text_search(query, documents_text, top_k=5):
+    """Simple text-based search using keyword matching"""
+    query_lower = query.lower()
+    results = []
+    
+    for i, doc_text in enumerate(documents_text):
+        doc_lower = doc_text.lower()
+        # Simple keyword matching
+        score = sum(1 for word in query_lower.split() if word in doc_lower)
+        if score > 0:
+            results.append((score, doc_text, i))
+    
+    # Sort by score and return top_k results
+    results.sort(key=lambda x: x[0], reverse=True)
+    return [doc_text for score, doc_text, idx in results[:top_k]]
+
 def convert_to_json(extraction_text):
     """Convert the extracted text into a structured JSON format"""
     sections = {
@@ -380,7 +396,7 @@ if uploaded_files:
                 st.session_state.processed_files = [f.name for f in uploaded_files]
 
 # Functionality Options in Sidebar
-if st.session_state.vectors is not None:
+if st.session_state.documents_text:
     with st.sidebar:
         st.markdown("## 📂 Document Actions")
         
@@ -404,12 +420,16 @@ if st.session_state.vectors is not None:
     if st.session_state.selected_option == 'extraction':
         if "extraction_result" not in st.session_state:
             with st.spinner("Extracting key details..."):
+                # Use simple text search to get relevant documents
+                relevant_docs = simple_text_search("legal contract terms conditions", st.session_state.documents_text)
+                
+                # Create documents for the chain
+                documents = [Document(page_content=doc) for doc in relevant_docs]
+                
                 document_chain = create_stuff_documents_chain(llm, extraction_prompt)
-                retriever = st.session_state.vectors.as_retriever()
-                retrieval_chain = create_retrieval_chain(retriever, document_chain)
-
+                
                 start = time.process_time()
-                response = retrieval_chain.invoke({'input': 'Extract all key legal information from the document'})
+                response = document_chain.invoke({'context': documents, 'input': 'Extract all key legal information from the document'})
                 elapsed = time.process_time() - start
 
                 # Convert to JSON
@@ -420,7 +440,7 @@ if st.session_state.vectors is not None:
                     "answer": response['answer'],
                     "json_data": json_data,
                     "elapsed": elapsed,
-                    "context": response.get("context", [])
+                    "context": documents
                 }
 
         # Retrieve from session state
@@ -461,12 +481,16 @@ if st.session_state.vectors is not None:
             st.session_state.chat_history.append(f"User: {prompt1}")
             
             with st.spinner("Finding answer..."):
+                # Use simple text search to get relevant documents
+                relevant_docs = simple_text_search(prompt1, st.session_state.documents_text)
+                
+                # Create documents for the chain
+                documents = [Document(page_content=doc) for doc in relevant_docs]
+                
                 document_chain = create_stuff_documents_chain(llm, qa_prompt)
-                retriever = st.session_state.vectors.as_retriever()
-                retrieval_chain = create_retrieval_chain(retriever, document_chain)
                 
                 start = time.process_time()
-                response = retrieval_chain.invoke({'input': prompt1})
+                response = document_chain.invoke({'context': documents, 'input': prompt1})
                 elapsed = time.process_time() - start
                 
                 # Store AI response in chat history
@@ -477,7 +501,7 @@ if st.session_state.vectors is not None:
                 st.write(response['answer'])
                 
                 with st.expander("📚 Relevant Document Sections"):
-                    for i, doc in enumerate(response["context"]):
+                    for i, doc in enumerate(documents):
                         st.markdown(f"Section {i+1}")
                         st.write(doc.page_content)
                         st.divider()
@@ -517,12 +541,16 @@ if st.session_state.vectors is not None:
                 Generate a clear, structured summary that captures the essence of the document.
                 """)
 
+                # Use simple text search to get relevant documents
+                relevant_docs = simple_text_search("summary overview main points", st.session_state.documents_text)
+                
+                # Create documents for the chain
+                documents = [Document(page_content=doc) for doc in relevant_docs]
+                
                 document_chain = create_stuff_documents_chain(llm, summary_prompt)
-                retriever = st.session_state.vectors.as_retriever()
-                retrieval_chain = create_retrieval_chain(retriever, document_chain)
                 
                 start = time.process_time()
-                response = retrieval_chain.invoke({'input': 'Generate a comprehensive summary of the entire document'})
+                response = document_chain.invoke({'context': documents, 'input': 'Generate a comprehensive summary of the entire document'})
                 elapsed = time.process_time() - start
 
                 st.session_state["summary"] = response['answer']  # Store summary
