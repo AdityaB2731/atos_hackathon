@@ -6,7 +6,7 @@ import {
   Search, 
   MessageSquare, 
   History, 
-  FileBarChart3,
+  BarChart3,
   X,
   Send,
   Download,
@@ -64,11 +64,14 @@ function App() {
         formData.append('files', file);
       });
 
+      console.log('Sending request to /api/process_documents');
       const response = await axios.post('/api/process_documents', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
+
+      console.log('Response received:', response.data);
 
       if (response.data.success) {
         setMessage({ type: 'success', text: 'Documents processed successfully!' });
@@ -78,7 +81,8 @@ function App() {
       }
     } catch (error) {
       console.error('Error processing documents:', error);
-      setMessage({ type: 'error', text: 'Failed to process documents. Please try again.' });
+      console.error('Error details:', error.response?.data || error.message);
+      setMessage({ type: 'error', text: `Failed to process documents: ${error.response?.data?.detail || error.message}` });
     } finally {
       setIsProcessing(false);
     }
@@ -273,7 +277,7 @@ function App() {
       {extractionResult && (
         <div className="result-section">
           <div className="result-title">
-            <FileBarChart3 size={24} />
+            <BarChart3 size={24} />
             Analysis Results
           </div>
           <div className="result-content">{extractionResult.answer}</div>
