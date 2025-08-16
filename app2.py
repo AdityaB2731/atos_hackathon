@@ -14,6 +14,7 @@ from langchain.document_loaders import PyPDFLoader, UnstructuredWordDocumentLoad
 from langchain.schema import Document
 from docx import Document as DocxDocument
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+import asyncio
 import json
 
 st.set_page_config(
@@ -312,6 +313,11 @@ def process_uploaded_file(uploaded_file):
 
 def vector_embedding(documents):
     with st.spinner("Processing documents..."):
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
         st.session_state.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         st.session_state.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         st.session_state.final_documents = st.session_state.text_splitter.split_documents(documents)
