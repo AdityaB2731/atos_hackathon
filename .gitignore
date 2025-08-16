@@ -1,5 +1,6 @@
 # Ignore virtual environment folder
 venv/
+node_modules/
 
 # Ignore environment variable file
 .env
@@ -20,3 +21,4 @@ __pycache__/
 
 # Ignore macOS specific files
 .DS_Store
+node_modules
