@@ -13,7 +13,6 @@ from langchain_community.vectorstores import FAISS
 from langchain.document_loaders import PyPDFLoader, UnstructuredWordDocumentLoader, TextLoader, CSVLoader, UnstructuredExcelLoader
 from langchain.schema import Document
 
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import json
 
 st.set_page_config(
@@ -170,8 +169,10 @@ st.markdown("""
 # Initialize session state variables
 if 'selected_option' not in st.session_state:
     st.session_state.selected_option = None
-if 'vectors' not in st.session_state:
-    st.session_state.vectors = None
+if 'documents_text' not in st.session_state:
+    st.session_state.documents_text = []
+if 'documents_metadata' not in st.session_state:
+    st.session_state.documents_metadata = []
 if 'processed_files' not in st.session_state:
     st.session_state.processed_files = []
 if 'chat_history' not in st.session_state:
@@ -307,10 +308,11 @@ def process_uploaded_file(uploaded_file):
 
 def vector_embedding(documents):
     with st.spinner("Processing documents..."):
-        st.session_state.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         st.session_state.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         st.session_state.final_documents = st.session_state.text_splitter.split_documents(documents)
-        st.session_state.vectors = FAISS.from_documents(st.session_state.final_documents, st.session_state.embeddings)
+        # Store documents in session state for simple text search
+        st.session_state.documents_text = [doc.page_content for doc in st.session_state.final_documents]
+        st.session_state.documents_metadata = [doc.metadata for doc in st.session_state.final_documents]
     st.success("Documents processed successfully!")
 
 def convert_to_json(extraction_text):
