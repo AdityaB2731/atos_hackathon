@@ -432,12 +432,18 @@ if st.session_state.documents_text:
                 response = document_chain.invoke({'context': documents, 'input': 'Extract all key legal information from the document'})
                 elapsed = time.process_time() - start
 
+                # Handle response - it might be a string or a dictionary
+                if isinstance(response, dict):
+                    answer = response.get('answer', str(response))
+                else:
+                    answer = str(response)
+
                 # Convert to JSON
-                json_data = convert_to_json(response['answer'])
+                json_data = convert_to_json(answer)
 
                 # Store the result in session state
                 st.session_state.extraction_result = {
-                    "answer": response['answer'],
+                    "answer": answer,
                     "json_data": json_data,
                     "elapsed": elapsed,
                     "context": documents
@@ -493,12 +499,18 @@ if st.session_state.documents_text:
                 response = document_chain.invoke({'context': documents, 'input': prompt1})
                 elapsed = time.process_time() - start
                 
+                # Handle response - it might be a string or a dictionary
+                if isinstance(response, dict):
+                    answer = response.get('answer', str(response))
+                else:
+                    answer = str(response)
+                
                 # Store AI response in chat history
-                st.session_state.chat_history.append(f"AI: {response['answer']}")
+                st.session_state.chat_history.append(f"AI: {answer}")
                 
                 st.success(f"Answer found in {elapsed:.2f} seconds!")
                 st.subheader("💡 Answer")
-                st.write(response['answer'])
+                st.write(answer)
                 
                 with st.expander("📚 Relevant Document Sections"):
                     for i, doc in enumerate(documents):
@@ -553,7 +565,13 @@ if st.session_state.documents_text:
                 response = document_chain.invoke({'context': documents, 'input': 'Generate a comprehensive summary of the entire document'})
                 elapsed = time.process_time() - start
 
-                st.session_state["summary"] = response['answer']  # Store summary
+                # Handle response - it might be a string or a dictionary
+                if isinstance(response, dict):
+                    summary = response.get('answer', str(response))
+                else:
+                    summary = str(response)
+
+                st.session_state["summary"] = summary  # Store summary
 
                 st.success(f"Summary generated in {elapsed:.2f} seconds!")
                 st.subheader("📄 Document Summary")
