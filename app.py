@@ -526,7 +526,7 @@ if st.session_state.documents_text:
         if st.button("🔄 Re-run Extraction"):
             if "extraction_result" in st.session_state:
                 del st.session_state.extraction_result
-            st.experimental_rerun()
+            st.rerun()
         
         st.subheader("📑 Legal Document Insights")
         st.write(extraction_result['answer'])
