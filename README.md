@@ -77,17 +77,15 @@ A powerful legal document analysis and extraction tool that helps you understand
    - **Chat History**: Review previous conversations
    - **Generate Summary**: Get a comprehensive document overview
 
-## 🔧 Available Apps
+## 🔧 Application
 
-- **app.py**: Main application with simple text-based search
-- **app2.py**: Enhanced version with vector embeddings for better document retrieval
+- **app.py**: Main application with document processing and AI-powered analysis
 
 ## 📁 Project Structure
 
 ```
 atos_hackathon/
 ├── app.py              # Main Streamlit application
-├── app2.py             # Enhanced version with vector embeddings
 ├── requirements.txt    # Python dependencies
 ├── README.md          # This file
 ├── us_census/         # Sample documents
