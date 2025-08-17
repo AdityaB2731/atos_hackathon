@@ -1,0 +1,25 @@
+# Requirements for app2.py - Enhanced version with vector embeddings
+# Core dependencies
+streamlit>=1.28.0
+python-dotenv>=1.0.0
+pandas>=2.0.0
+
+# LangChain and AI/LLM
+langchain>=0.1.0
+langchain_groq>=0.0.1
+langchain_google_genai>=0.0.5
+langchain_community>=0.0.10
+
+# Vector embeddings and storage
+faiss-cpu>=1.7.4
+google-cloud-aiplatform>=1.38.0
+
+# Document processing
+PyPDF2>=3.0.0
+pypdf>=3.17.0
+python-docx>=0.8.11
+unstructured>=0.10.0
+openpyxl>=3.1.0
+
+# Additional dependencies for enhanced functionality
+# Note: asyncio, json, tempfile, time, os are built-in Python modules
